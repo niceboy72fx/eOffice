@@ -1,0 +1,108 @@
+﻿@using Newtonsoft.Json
+@using eHnue.Shared
+@using eHnue.Shared.Enum
+@using eHnue.Shared.Models
+@inject NavigationManager NavigationManager
+@inject HttpClient _httpClient
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized Context="Auth">
+<div class="col-md-7 col-lg-8">
+    <h4 class="mb-3">Phân quyền phê duyệt</h4>
+    <hr class="my-4">
+    <EditForm Model="@item" OnValidSubmit="@OnValidSubmit">
+        <DataAnnotationsValidator />
+        <div class="row g-3">
+            
+            <div class="col-md-3">
+                <label>Đơn vị</label>
+                <InputSelect class="form-control" ValueChanged="@((string value ) => DeptHasChanged(value))" ValueExpression="@(() => deptID)" Value="@deptID">
+                    <option value="">---Chọn khoa---</option>
+                    @foreach (var it in deptList)
+                    {
+                        <option value="@it.Id">@it.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label>Cán bộ</label>
+                <InputSelect class="form-control" @bind-Value="item.StaffId">
+                    <option value="-1">Tất cả</option>
+                    @foreach (var ite in userList)
+                    {
+                        <option value="@ite.Id">@ite.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-sm-3">
+                <label>Vai trò</label>
+                <InputNumber id="MinDays" class="form-control" @bind-Value="item.RoleName" />
+                <ValidationMessage For="@(() => item.RoleName)" />
+            </div>            
+            
+        </div>
+
+        <hr class="my-4">
+
+        <button type="submit" class="btn btn-primary">
+            @ButtonText
+        </button>
+        <input type="submit" value="Cancel" @onclick="(() => Cancel())" class="btn btn-warning" />
+    </EditForm>
+</div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    [Parameter] public UserRole item { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Lưu";
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    private string  deptID { get; set; }
+    private int staffId = 0;
+    private string ErrorMsg;
+
+    
+    List<Department> deptList = new List<Department>();
+    List<StaffNameOnly> userList = new List<StaffNameOnly>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        //Lấy các đơn vị
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetDepartment");
+        deptList = await response.Content.ReadFromJsonAsync<List<Department>>();
+
+    }
+
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/assignrole");
+    }
+    private async Task DeptHasChanged(string value)
+    {
+        deptID = value;
+        
+        if (value == "")
+        {
+            userList.Clear();
+        }
+        else
+        {
+            await LoadStates(value);
+        }
+    }
+
+    private async Task LoadStates(string khoaId)
+    {
+        var response = await _httpClient.GetAsync("api/Nganh/NganhGetListByKhoa/" + khoaId);
+        userList = await response.Content.ReadFromJsonAsync<List<StaffNameOnly>>();
+    }
+}

@@ -1,0 +1,96 @@
+﻿@page "/assignrole"
+@inject HttpClient client
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using eHnue.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>Phân quyền</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+
+<div class="form-group">
+    <a class="btn btn-success" href="assignrole/create"><i class="oi oi-plus"></i> Tạo mới</a>
+</div>
+<br>
+@if (assigns == null)
+{
+    <text>Loading...</text>
+}
+else if (assigns.Length == 0)
+{
+    <text>No Records Found.</text>
+}
+else
+{
+    <table class="table table-striped align-middle table-bordered">
+        <thead align="center" class="table-success">
+            <tr>
+                <th>Id</th>
+                <th>Cấp duyệt</th>
+                <th>Chức danh</th>
+                <th>Cấp được duyệt</th>
+                <th>Trạng thái trước</th>
+                <th>Trạng thái sau</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (AssignRole reg in assigns)
+            {
+                <tr>
+                    <td>@reg.Id</td>
+                    <td>@fulldeptList.FirstOrDefault(d => d.Id == reg.AssigneeDeptId)?.Name</td>
+                    <td>@fullpositionList.FirstOrDefault(d => d.id == reg.AssigneePosId)?.Name </td>
+                    <td>@fulldeptList.FirstOrDefault(d => d.Id == reg.AssignForDepartId)?.Name</td>
+                    <td>@state.FirstOrDefault(d=> d.State == reg.StatusBeforeAssign)?.Name</td>
+                    <td>@state.FirstOrDefault(d=> d.State == reg.StatusAfterAssign)?.Name</td>
+                    <td>
+                        <a class="btn btn-success" href="assignrole/edit/@reg.Id">Edit</a>
+                        <button class="btn btn-danger" @onclick="@(() => Delete(reg.Id))">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    AssignRole[] assigns { get; set; }
+    Position[] positionList { get; set; }
+    Department[] deptList { get; set; }
+    List<Department> fulldeptList = new List<Department>();
+    List<Position> fullpositionList = new List<Position>();
+    List<ApproveState> state = new List<ApproveState>();
+    //Position addpos = {[ 1, "tất cả" ]}
+    protected override async Task OnInitializedAsync()
+    {
+        assigns = await client.GetFromJsonAsync<AssignRole[]>("api/AssignRole");
+
+        positionList = await client.GetFromJsonAsync<Position[]>("api/CoreAPI/GetPosition");
+        fullpositionList.Add(new Position() { id = -1, Name = "Tất cả" });
+        fullpositionList.AddRange(positionList.ToList());
+       
+        deptList = await client.GetFromJsonAsync<Department[]>("api/CoreAPI/GetDepartment");
+        fulldeptList.Add(new Department() { Id = -1, Name = "Tất cả" });
+        fulldeptList.AddRange(deptList.ToList());
+
+        state = await client.GetFromJsonAsync<List<ApproveState>>("api/ApproveState");
+
+    }
+    async Task Delete(int regId)
+    {
+        var reg = assigns.First(x => x.Id == regId);
+        if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {reg.Id}'s ({reg.Id}) Record?"))
+        {
+            await client.DeleteAsync($"api/assignrole/{regId}");
+            await OnInitializedAsync();
+        }
+    }
+}

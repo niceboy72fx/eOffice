@@ -1,0 +1,51 @@
+﻿@page "/expense/delete/{Id:int}"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+<h2>Xóa hình thức chi trả</h2>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <div class="form-group">
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>ID</td>
+                            <td>@expense.Id</td>
+                        </tr>
+                        <tr>
+                            <td>Tên hình thức chi trả</td>
+                            <td>@expense.ExpenseName</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Delete" @onclick="(async () => await RemoveExpense(expense.Id))" class="btn btn-danger" />
+                <input type="submit" value="Cancel" @onclick="(() => Cancel())" class="btn btn-warning" />
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    Expense expense = new Expense();
+    protected override async Task OnInitializedAsync()
+    {
+        expense = await Http.GetFromJsonAsync<Expense>("/api/Expense/" + Convert.ToInt32(Id));
+    }
+    protected async Task RemoveExpense(int expenseID)
+    {
+        await Http.DeleteAsync("api/Expense/" + expenseID);
+        NavigationManager.NavigateTo("/ExpenseDetails");
+    }
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("/ExpenseDetails");
+    }
+}

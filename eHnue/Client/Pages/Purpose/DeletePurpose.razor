@@ -1,0 +1,53 @@
+﻿@page "/purpose/delete/{Id:int}"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+<h3>Xóa Mục đích</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+        <br />
+        <div class="form-group">
+            <h4>Bạn có muốn xóa bản ghi này không?</h4>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Mục đích</td>
+                        <td>@purpose.PurposeName</td>
+                    </tr>
+                    <tr>
+                        <td>Là mục đích cá nhân</td>
+                        <td>@purpose.IsPrivate</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="form-group">
+            <input type="submit" value="Delete" @onclick="(async () => await RemovePurpose(purpose.Id))" class="btn btn-danger" />
+            <input type="submit" value="Cancel" @onclick="(() => Cancel())" class="btn btn-warning" />
+        </div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    Purpose purpose = new Purpose();
+    protected override async Task OnInitializedAsync()
+    {
+        purpose = await Http.GetFromJsonAsync<Purpose>("/api/Purpose/" + Convert.ToInt32(Id));
+    }
+    protected async Task RemovePurpose(int purposeID)
+    {
+        await Http.DeleteAsync("api/Purpose/" + purposeID);
+        NavigationManager.NavigateTo("/PurposeDetails");
+    }
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("/PurposeDetails");
+    }
+}

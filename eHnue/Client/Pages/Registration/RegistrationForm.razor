@@ -1,0 +1,209 @@
+﻿@using Newtonsoft.Json
+@using eHnue.Shared
+@using eHnue.Shared.Enum
+@using eHnue.Shared.Models
+@inject eHnue.Client.ILocalStorage LocalStorage
+@inject HttpClient _httpClient
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized Context="Auth">
+
+            <div class="col-md-7 col-lg-8">
+                <h4 class="mb-3">Đăng ký đi nước ngoài</h4>
+                <hr class="my-4">
+                <EditForm Model="@reg" OnValidSubmit="@OnValidSubmit">
+                    <DataAnnotationsValidator />
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label>Họ và đệm</label>
+                            <InputText readonly id="Name" class="form-control" placeholder="Họ và  tên" @bind-Value="@reg.Name" />
+                            <ValidationMessage For="@(() => reg.Name)" />
+                        </div>
+                        <div class="col-md-3">
+                            <label>Đối tượng</label>
+                            <InputSelect class="form-control" @bind-Value="@reg.StaffType">
+                                @foreach (var stafftype in Enum.GetNames(typeof(StaffType)))
+                                {
+                                    <option value="@stafftype">@stafftype</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-sm-3">
+                            <label>Mã nhân viên</label>
+                            <InputNumber readonly id="staffid" class="form-control" @bind-Value="@reg.StaffId" />
+                            <ValidationMessage For="@(() => reg.StaffId)" />
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-sm-3">
+                            <label>Số điện thoại</label>
+                            <InputText id="mobiPhone" class="form-control" @bind-Value="reg.MobiPhone" />
+                            <ValidationMessage For="@(() => reg.MobiPhone)" />
+                        </div>
+
+                        <div class="col-sm-3">
+                            <label>ĐT ở nước ngoài</label>
+                            <InputText id="OutboundPhone" class="form-control" @bind-Value="reg.OutboundPhone" />
+                            <ValidationMessage For="@(() => reg.OutboundPhone)" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label>Email</label>
+                            <InputText id="email" class="form-control" Required="True" @bind-Value="reg.Email" />
+                            <ValidationMessage For="@(() => reg.Email)" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label>Đăng ký đi từ ngày</label>
+                            <InputDate id="fromDate" class="form-control" @bind-Value="reg.FromDate" ParsingErrorMessage="Ngày không hợp lệ" />
+                            <ValidationMessage For="@(() => reg.FromDate)" />
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label>Đến ngày</label>
+                            <InputDate id="toDate" class="form-control" @bind-Value="reg.ToDate" ParsingErrorMessage="Ngày không hợp lệ" />
+                            <ValidationMessage For="@(() => reg.ToDate)" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="purpose" class="form-label">Mục đích đi nước ngoài</label>
+                            <InputSelect @key=reg class="form-select" id="purpose" @bind-Value="reg.PurposeId" required>
+                                <option value="">---Chọn mục đích---</option>
+                                @foreach (var purpose in purposeList)
+                                {
+                                    <option value="@purpose.Id">@purpose.PurposeName</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(()=>@reg.ExpenseId)" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="purpose" class="form-label">Nguồn kinh phí</label>
+                            <InputSelect @key=reg class="form-select" id="purpose" @bind-Value="reg.ExpenseId" required>
+                                <option value="">---Chọn nguồn kinh phí---</option>
+                                @foreach (var expense in expenseList)
+                                {
+                                    <option value="@expense.Id">@expense.ExpenseName</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(()=>@reg.ExpenseId)" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="country" class="form-label">Nước</label>
+                            <InputSelect @key=reg class="form-select" id="country" @bind-Value="reg.ToCountryId" required>
+                                <option value="">---Chọn nước---</option>
+                                @foreach (var country in countryList)
+                                {
+                                    <option value="@country.Id">@country.CountryName</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(()=>@reg.ToCountryId)" />
+                        </div>
+                        <div class="col-12">
+                            <label>Thành phố</label>
+                            <InputTextArea id="Cities" class="form-control" placeholder="Tên các thành phố đi" @bind-Value="reg.Cities" />
+                            <ValidationMessage For="@(() => reg.Cities)" />
+                        </div>
+                        <div class="col-12">
+                            <label>Nội dung đi nước ngoài</label>
+                            <InputTextArea id="Descritption" class="form-control" placeholder="Tóm tắt nội dung đi nước ngoài" @bind-Value="reg.Description" />
+                            <ValidationMessage For="@(() => reg.Description)" />
+                        </div>
+                        @*                <InputFile OnChange="OnInputFileChange" multiple />
+                        <br /><br />
+                        <button type="submit">Upload Selected File(s)</button>*@
+                        <div class="form-check">
+                            <InputCheckbox @bind-Value="reg.IsPartyMember" />
+                            <label>Tôi là Đảng viên và đã thực hiện báo cáo việc đi nước ngoài với Chi bộ/Đảng bộ trực thuộc</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="Commitment" name="Commitment" required bind="@commitment" value="add" />
+                            <label for="Confirm">
+                                Tôi cam kết trong thời gian đi nước ngoài sẽ tuân thủ pháp luật của Nhà nước,
+                                quy định của Nhà trường và về nước đúng thời hạn
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <button type="submit" class="btn btn-success">
+                        @ButtonText
+                    </button>
+                    <button class="btn btn-light" @onclick="Cancel">Đóng</button>
+
+                </EditForm>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public Registration reg { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Save";
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    private int staffId = 0;
+    private string ErrorMsg;
+    List<CountryView> countryList = new List<CountryView>();
+    List<Expense> expenseList = new List<Expense>();
+    List<Purpose> purposeList = new List<Purpose>();
+    private bool commitment;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _httpClient.GetAsync("api/country");
+        response.EnsureSuccessStatusCode();
+        countryList = await response.Content.ReadFromJsonAsync<List<CountryView>>();
+
+        //Lấy mục đích đi công tác
+        response = await _httpClient.GetAsync("api/purpose");
+        response.EnsureSuccessStatusCode();
+        purposeList = await response.Content.ReadFromJsonAsync<List<Purpose>>();
+
+        response = await _httpClient.GetAsync("api/expense");
+        response.EnsureSuccessStatusCode();
+        expenseList = await response.Content.ReadFromJsonAsync<List<Expense>>();
+
+
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp != null)
+        {
+            staffId = Int32.Parse(tmp);
+        }
+
+        
+        var staff_api_rs = await _httpClient.GetAsync("api/StaffAPI/" + @staffId);
+        var staff_api_obj = staff_api_rs.Content.ReadAsStringAsync().Result;
+        var result = JsonConvert.DeserializeObject<StaffAPI_View>(staff_api_obj);
+        if (!result.success)
+        {
+            ErrorMsg = result.message;
+        }
+        else
+        {
+            reg.Name = result.data.Name;
+            reg.StaffId = staffId;
+        }
+
+    }
+
+    private void HandleDateChanged(DateTime? dDate)
+    {
+        if (reg.FromDate >= reg.ToDate)
+        {
+            return;
+        }
+
+    }
+
+
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/registration");
+    }
+
+}

@@ -1,0 +1,148 @@
+﻿@page "/StaffList"
+@using eHnue.Shared
+@inject HttpClient client
+
+<h3>Danh sách cán bộ theo đơn vị</h3>
+@if (departList == null)
+{
+    <text>Loading...</text>
+}
+else if (departList.Length == 0)
+{
+    <text>Không tìm thấy bản ghi nào.</text>
+}
+else
+{
+        <div class="container">
+            <div class="row" style="padding-top:10px">
+                <div class="col-md-6">
+                    <select class="form-control" onchange="@DepartClicked">
+                        <option value="">--- Chọn đơn vị ---</option>
+                    @foreach (var depart in departList)
+                    {
+                                <option value="@depart.Id">@depart.Name</option>
+                    }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" placeholder="Tìm kiếm theo tên"
+                   @bind="SearchString" @bind:event="oninput" @onkeyup="Filter" />
+@*                @if (SearchString.Length > 0)
+                {
+                    <div class="input-group-append">
+                        <button role="button" class="btn btn-primary" @onclick="ResetSearch">
+                            <span class="material-icons">Reset</span>
+                        </button>
+                    </div>
+                }*@
+                </div>
+            </div>
+        </div>
+        <div>
+                <table class="table table-striped align-middle table-bordered">
+                    <thead align="center" class="table-success">
+                    <tr>
+                        <th>TT</th>
+                        <th>ID</th>
+                        <th>Tên</th>
+                        <th>Mã cán bộ</th>
+                        <th>Giới tính</th>
+                        <th>Email</th>
+                        <th>Birthday</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (staffList != null)
+                {
+                    var i = 1;
+                    @foreach (var staff in staffList)
+                    {
+                                    <tr>
+                                        <td>@i</td>
+                                        <td>@staff.Id</td>
+                                        <td>@staff.Name</td>
+                                        <td>@staff.Code</td>
+                                        <td>@staff.Gender</td>
+                                        <td>@staff.Email</td>
+                                        <td>@Convert.ToDateTime(@staff.Birthday).ToString("dd-MM-yyyy")</td>
+                                    </tr>
+                        i++;
+                    }
+                }
+
+                </tbody>
+            </table>
+
+
+        </div>
+        <div class="row" style="padding-top:50px">
+            <div class="col-md-4">
+                <label class="control-label">Tổng số cán bộ: @staffCount.ToString()</label>
+            </div>
+
+        </div>
+
+}
+@code {
+    //{
+    //        "Id": 2893,
+    //        "Name": "Administrator",
+    //        "TitleId": 14,
+    //        "Code": "D2290320.000000",
+    //        "DegreeId": 6,
+    //        "DepartmentId": 26,
+    //        "Gender": "Nam",
+    //        "Department": "Trung tâm Công nghệ Thông tin",
+    //        "TeachingInId": 26,
+    //        "PositionIds": [],
+    //        "IsRetired": false,
+    //        "Email": "admin@hnue.edu.vn",
+    //        "Birthday": "1981-08-05T00:00:00",
+    //        "IsMoved": false,
+    //        "IsProbation": false
+    //    }
+
+    protected Department[]? departList { get; set; }
+    protected List<ThongTinCanBoAPI> staffList = new();
+    protected List<ThongTinCanBoAPI> searchData = new();
+    int departId { get; set; }
+    int staffCount { get; set; }
+    protected string SearchString { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        departList = await client.GetFromJsonAsync<Department[]>("api/CoreAPI/GetDepartment");
+
+    }
+
+    protected async void DepartClicked(ChangeEventArgs departEvent)
+    {
+        //staffList.clear()
+
+        departId = Convert.ToInt32(departEvent.Value.ToString());
+        staffList = await client.GetFromJsonAsync<List<ThongTinCanBoAPI>>("api/CoreAPI/GetStaff/" + departId);
+        staffCount = staffList.Count;
+        searchData = staffList;
+        this.StateHasChanged();
+    }
+    protected void Filter()
+    {
+        if (!string.IsNullOrEmpty(SearchString))
+        {
+            staffList = searchData
+                .Where(x => x.Name.ToLower().Contains(SearchString.ToLower()))
+                .ToList();
+        }
+        else
+        {
+            staffList = searchData;
+        }
+    }
+
+    protected void ResetSearch()
+    {
+        SearchString = string.Empty;
+        staffList = searchData;
+    }
+}

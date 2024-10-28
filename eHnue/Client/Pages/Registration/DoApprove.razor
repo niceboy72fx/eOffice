@@ -1,0 +1,140 @@
+﻿@page "/registration/approve/{id:int}/{approveStatus:int}"
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@using eHnue.Shared.Models
+@using eHnue.Shared.Enum;
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject eHnue.Client.ILocalStorage LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>@Title</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized Context="Auth">
+            <EditForm Model="@reg" OnValidSubmit="SaveApprove">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="Address" class="form-label">Xem xét phê duyệt cho ông/bà</label>
+                    <div class="col-md-4">
+                        <InputText readonly class="form-control" @bind-Value="reg.Name" />
+                    </div>
+                    <ValidationMessage For="@(() => reg.Name)" />
+                    <label>Trạng thái hiện tại</label>
+                    <div class="col-md-2">
+                        <InputSelect readonly class="form-control" @bind-Value="@reg.Status">
+                            @foreach (var st in Enum.GetValues(typeof(RegStatus)))
+                            {
+                                <option value="@st">@st</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>Trạng thái duyệt</label>
+                    <div class="col-md-6">
+                        <InputSelect class="form-control" @bind-Value="@regstatus">
+                            @foreach (var st in Enum.GetValues(typeof(RegStatus)))
+                            {
+                                <option value="@st">@st</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Address" class="form-label">Ghi chú</label>
+                    <div class="col-md-6">
+                        <InputTextArea class="form-control" @bind-Value="log.Note" />
+                    </div>
+                    <ValidationMessage For="@(() => reg.Name)" />
+                </div>
+
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Phê duyệt</button>
+                    <button class="btn btn-light" @onclick="Cancel">Cancel</button>
+                </div>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int id { get; set; }
+    [Parameter]
+    public int approveStatus { get; set; }
+    public RegStatus regstatus { get; set; }
+    protected string Title = "Thêm";
+    protected Registration reg = new();
+    private ApproveLog log = new ApproveLog();
+    protected int firstApproveStatus = 0;
+
+    protected override async Task OnParametersSetAsync()
+
+    {
+        if (id != 0)
+        {
+            Title = "Phê duyệt";
+            reg = await Http.GetFromJsonAsync<Registration>("api/registration/" + id);
+            if (reg != null)
+            {
+                firstApproveStatus = reg.ApprovedStatus;
+            }
+        }
+    }
+    protected async Task SaveApprove()
+    {
+        await SaveApproveLog(); //Save log before save Approve
+        reg.ApprovedStatus = approveStatus;
+        reg.Status = regstatus;
+        var response = await Http.PutAsJsonAsync("api/registration", @reg);
+        bool personResponse = await response.Content.ReadFromJsonAsync<bool>();
+        if (personResponse)
+        {
+            //await JsRuntime.InvokeVoidAsync("alert", "Saved Successfully!");
+            NavigationManager.NavigateTo("approvelist");
+        }
+
+    }
+
+    protected async Task SaveApproveLog()
+    {
+        int staffId = 0;
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp != null)
+        {
+            staffId = Int32.Parse(tmp);
+        }
+
+        log.ApproveDate = System.DateTime.Now.ToString("dd/MM/yyyy HH':'mm':'ss");
+        log.RegistrationID = id;
+        log.ApproveStaffId = staffId;
+        log.FromStatus = firstApproveStatus;
+        log.ToStatus = approveStatus;
+        var response = await Http.PostAsJsonAsync("api/ApproveLog/SaveApproveLog", @log);
+        //bool personResponse = await response.Content.ReadFromJsonAsync<bool>();
+        //if (personResponse)
+        //{
+        //    await JsRuntime.InvokeVoidAsync("alert", "Saved Log Successfully!");
+        //}
+    }
+    private static string GetStatusName(RegStatus stt)
+    {
+        return stt.GetType()
+                    .GetMember(stt.ToString())
+                    .First()
+                    .GetCustomAttribute<DisplayAttribute>()
+                    .GetName();
+    }
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/approvelist");
+    }
+}

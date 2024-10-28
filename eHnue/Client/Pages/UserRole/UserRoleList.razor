@@ -1,0 +1,89 @@
+﻿@page "/userRoleList"
+@inject HttpClient client
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using eHnue.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+<h3>Vai trò</h3>
+
+<div class="form-group">
+    <a class="btn btn-success" href="userrole/create"><i class="oi oi-plus"></i> Tạo mới</a>
+</div>
+<br>
+@if (list == null)
+{
+    <text>Loading...</text>
+}
+else if (list.Length == 0)
+{
+    <text>No Records Found.</text>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>StaffId</th>
+                <th>Staff Name</th>
+                <th>Vai trò</th>                
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (UserRole item in list)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.StaffId</td>
+                    <td>@item.StaffName</td>
+                    <td>@item.RoleName</td>
+                    <td>
+                        <a class="btn btn-success" href="userRole/edit/@item.Id">Edit</a>
+                        <button class="btn btn-danger" @onclick="@(() => Delete(item.Id))">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    UserRole[] list { get; set; }
+    Position[] positionList { get; set; }
+    Department[] deptList { get; set; }
+    List<Department> fulldeptList = new List<Department>();
+    List<Position> fullpositionList = new List<Position>();
+    //Position addpos = {[ 1, "tất cả" ]}
+    protected override async Task OnInitializedAsync()
+    {
+        list = await client.GetFromJsonAsync<UserRole[]>("api/UserRole");
+        positionList = await client.GetFromJsonAsync<Position[]>("api/CoreAPI/GetPosition");
+        fullpositionList.Add(new Position() { id = -1, Name = "Tất cả" });
+        fullpositionList.AddRange(positionList.ToList());
+        //positionList[1] = { id = 1, Name = "Tất cả"};
+        deptList = await client.GetFromJsonAsync<Department[]>("api/CoreAPI/GetDepartment");
+        
+        fulldeptList.Add(new Department() { Id = -1, Name = "Tất cả" });
+        fulldeptList.AddRange(deptList.ToList());
+
+    }
+    async Task Delete(int regId)
+    {
+        var reg = list.First(x => x.Id == regId);
+        if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {reg.Id}'s ({reg.Id}) Record?"))
+        {
+            await client.DeleteAsync($"api/UserRole/{regId}");
+            await OnInitializedAsync();
+        }
+    }
+}

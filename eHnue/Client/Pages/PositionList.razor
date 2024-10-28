@@ -1,0 +1,52 @@
+﻿@page "/positionList"
+@using eHnue.Shared
+@using Newtonsoft.Json
+
+@inject HttpClient _httpClient
+
+
+<h3>Danh mục chức danh nhà trường</h3>
+@if (posList == null)
+{
+    <text>Loading...</text>
+}
+else if (posList.Count == 0)
+{
+    <text>Không tìm thấy bản ghi nào.</text>
+}
+else
+{
+            <table class="table table-striped align-middle table-bordered">
+                <thead align="center" class="table-success">
+                    <tr>
+                        <th>Mã vị trí</th>
+                        <th>Tên chức danh</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+            @foreach (Position item in posList)
+            {
+                                <tr>
+                                    <th>@item.id</th>
+                                    <th>@item.Name</th>
+                                </tr>
+            }
+
+                </tbody>
+            </table>
+}
+
+@code {
+    List<Position> posList = new List<Position>();
+    //Position[] positionList { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Lấy vị trí
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetPosition");
+        response.EnsureSuccessStatusCode();
+        posList = await response.Content.ReadFromJsonAsync<List<Position>>();
+
+    }
+}

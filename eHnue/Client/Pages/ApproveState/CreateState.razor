@@ -1,0 +1,103 @@
+﻿@page "/approvestate/add"
+@page "/approvestate/edit/{id:int}"
+@using eHnue.Shared
+@using eHnue.Shared.Models
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h1>@Title Mức phê duyệt</h1>
+<hr />
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+       <Authorized Context = "Auth">
+        <EditForm Model="@state" OnValidSubmit="SaveApproveState">
+            <DataAnnotationsValidator />
+
+  @*          <div class="mb-3">
+                <label for="Address" class="form-label">ID</label>
+                <div class="col-md-4">
+                    <InputNumber class="form-control" @bind-Value="state.Id" />
+                </div>
+                <ValidationMessage For="@(() => state.Id)" />
+            </div>*@
+            <div class="mb-3">
+                <label for="Address" class="form-label">Giá trị mức duyệt</label>
+                <div class="col-md-4">
+                    <InputNumber class="form-control" @bind-Value="state.State" />
+                </div>
+                <ValidationMessage For="@(() => state.State)" />
+            </div>
+            <div class="mb-3">
+                <label for="Name" class="form-label">Tên mức duyệt</label>
+                <div class="col-md-4">
+                    <InputText class="form-control" @bind-Value="state.Name" />
+                </div>
+                <ValidationMessage For="@(() => state.Name)" />
+            </div>
+            <div class="mb-3">
+                <label for="Name" class="form-label">Chức danh tương ứng</label>
+                <div class="col-md-4">
+                    <InputSelect @key=state class="form-select" id="purpose" @bind-Value="state.PositionId" required>
+                            @foreach (var item in posList)
+                            {
+                                <option value="@item.id">@item.Name</option>
+                            }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => state.PositionId)" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button class="btn btn-light" @onclick="Cancel">Cancel</button>
+            </div>
+        </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int id { get; set; }
+    protected string Title = "Thêm";
+    protected ApproveState state = new();
+    List<Position> posList = new List<Position>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        //Lấy vị trí
+        var response = await Http.GetAsync("api/CoreAPI/GetPosition");
+        response.EnsureSuccessStatusCode();
+        posList = await response.Content.ReadFromJsonAsync<List<Position>>();
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        if (id != 0)
+        {
+            Title = "Sửa";
+            state = await Http.GetFromJsonAsync<ApproveState>("api/approvestate/" + id);
+        }
+    }
+    protected async Task SaveApproveState()
+    {
+        if (id != 0)
+        {
+            await Http.PutAsJsonAsync("api/approvestate", state);
+        }
+        else
+        {
+            await Http.PostAsJsonAsync("api/approvestate", state);
+        }
+        Cancel();
+    }
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/approvestate");
+    }
+}

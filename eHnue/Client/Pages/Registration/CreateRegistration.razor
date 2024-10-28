@@ -1,0 +1,109 @@
+﻿@page "/registration/create"
+@inject HttpClient _httpClient
+@inject NavigationManager uriHelper
+@using eHnue.Shared.Models
+@inject IJSRuntime js
+@using eHnue.Shared
+@inject eHnue.Client.ILocalStorage LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.ComponentModel.DataAnnotations
+
+<h3>Tạo đăng ký</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <RegistrationForm ButtonText="Đăng ký" reg="@reg" OnValidSubmit="@CreateReg" />
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    private string mailMessage = "Phòng ban chức năng Trường Đại học Sư phạm Hà Nội đã tiếp nhận thông tin đi nước ngoài của thầy/cô." +
+                                    "Thầy cô vui lòng đến phòng Tổ chức cán bộ (với các mục đích nghỉ phép và kết hợp) " +
+                                    "hoặc phòng Hành chính Đối ngoại (với các mục đích đi công tác) để nhận quyết định sau 03 ngày làm việc " +
+                                    "(không kể thứ 7, Chủ nhật) từ sau khi nhận được email này. " +
+                                    "Trân trọng!";
+    Registration reg = new Registration();
+    List<ApproveState> appStates = new List<ApproveState>();
+
+    async Task CreateReg()
+    {
+        int staffId = 0;
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp != null)
+        {
+            staffId = Int32.Parse(tmp);
+        }
+
+        GiangVien_DetailAPI staffInfo = new GiangVien_DetailAPI();
+
+
+        staffInfo = await _httpClient.GetFromJsonAsync<GiangVien_DetailAPI>($"api/CoreAPI/GetStaffInfo/{staffId}");
+
+        int[] posIDs = staffInfo.PositionIds;
+
+        //Giá trị khởi tạo luôn = 1 đối với nhân viên
+        //Giá trị khởi tạo = giá trị phê duyệt sau của lãnh đạo
+        //Giá trị khởi tạo lấy trong bảng ApproveState với PositionID, sắp xếp theo chiều giảm của State
+
+        appStates = await _httpClient.GetFromJsonAsync<List<ApproveState>>("api/approvestate");
+        var startState = appStates.OrderByDescending(x => x.State).FirstOrDefault(m => posIDs.Contains(m.PositionId))?.State;
+        if (startState == null) startState = 1;
+
+        reg.ApprovedStatus = startState.Value;
+
+        if (reg.FromDate > reg.ToDate || reg.FromDate < System.DateTime.Now || reg.ToDate < System.DateTime.Now)
+        {
+            //js.InvokeVoidAsync("Từ ngày đến ngày không hợp lệ");
+            //uriHelper.NavigateTo("registration");
+            await js.InvokeVoidAsync("alert", "Ngày tháng không hợp lệ");
+            return;
+        }
+
+        if (!IsvalidMail(reg.Email))
+        {
+            await js.InvokeVoidAsync("alert", "Địa chỉ email không hợp lệ");
+            return;
+        }
+
+        try
+        {
+            var a = await _httpClient.PostAsJsonAsync($"api/registration/AddRegistration", reg);
+
+            if (a.IsSuccessStatusCode)
+            {
+  
+                EmailData content = new();
+                content.EmailToName = reg.Name;
+                content.EmailSubject = "EHNUE-Xác nhận hoàn thành đăng ký đi NN";
+                content.EmailToId = reg.Email;
+                content.EmailBody = mailMessage;
+
+                //public bool SendEmail(string to, string subject, string html, string from = null)
+                var sendOK = await _httpClient.PostAsJsonAsync($"api/Email/SendEmail/", content);
+                //
+            }
+            else
+            {
+                await js.InvokeVoidAsync("Error Occured");
+                //await js.InvokeVoidAsync(a.ReasonPhrase);
+            }
+        }
+        catch (Exception e)
+        {
+            await js.InvokeVoidAsync("Error:" + e.Message);
+        }
+
+        uriHelper.NavigateTo("registration");
+    }
+    private bool IsvalidMail(string address)
+    {
+        EmailAddressAttribute e = new EmailAddressAttribute();
+        if (e.IsValid(address))
+            return true;
+        else
+            return false;
+    }
+}

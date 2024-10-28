@@ -1,0 +1,100 @@
+﻿@using eHnue.Shared;
+
+@page "/Setting"
+@using System.Net.Http.Headers
+@inherits LayoutComponentBase
+@inject HttpClient _httpClient
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using System.Text
+@using Newtonsoft.Json
+@inject eHnue.Client.ILocalStorage LocalStorage
+
+<h1>Thông tin người sử dụng</h1>
+
+@if (staffInfo == null)
+{
+    <p>Không lấy được thông tin người dùng.</p>
+}
+else
+{
+    <div class="form-group row">
+        <div class="col-md-4">
+            <label for="name" class="col-md-4 col-form-label">ID: @staffInfo.Id</label>
+        </div>
+
+        <div class="col-md-8">
+            <label for="name" class="col-md-8 col-form-label">Code: @staffInfo.Code</label>
+        </div>
+
+
+    </div>
+    <div class="form-group row">
+        <div class="col-md-12">
+            <label for="name" class="col-md-6 col-form-label">Name: @staffInfo.Name</label>
+        </div>
+    </div>
+
+
+    <div class="form-group row">
+        <div class="col-md-4">
+            <label for="name" class="col-md-4 col-form-label">Giới tính: @staffInfo.Gender</label>
+        </div>
+
+        <div class="col-md-8">
+            <label for="name" class="col-md-8 col-form-label">Ngày sinh: @staffInfo.Birthday.ToString("dd/MM/yyyy")</label>
+        </div>
+
+    </div>
+    <div class="form-group row">
+        <div class="col-md-12">
+            <label for="name" class="col-md-6 col-form-label">Email: @staffInfo.Email</label>
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="name" class="col-md-2 col-form-label">Các vị trí:</label>
+        <div class="col-md-6">
+            @foreach (int item in staffInfo.PositionIds.ToArray())
+            {
+                <label for="name" class="col-md-4 col-form-label">PositionId: @item</label>
+            }
+
+        </div>
+    </div>
+}
+
+@*        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Code { get; set; }
+        public string Gender { get; set; }
+        public DateTime Birthday { get; set; }
+        public int TitleId { get; set; }
+        public int DegreeId { get; set; }
+        public bool IsMoved { get; set; }
+        public bool IsRetired { get; set; }
+        public bool IsProbation { get; set; }
+        public int DepartmentId { get; set; }
+        public int TeachingInId { get; set; }
+        public string Email { get; set; }
+        public int[] PositionIds { get; set; }*@
+@code
+{
+
+    GiangVien_DetailAPI staffInfo = new GiangVien_DetailAPI();
+
+    protected override async Task OnInitializedAsync()
+    {
+        int staffId = 0;
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp != null)
+        {
+            staffId = Int32.Parse(tmp);
+        }
+
+
+        staffInfo = await _httpClient.GetFromJsonAsync<GiangVien_DetailAPI>($"api/CoreAPI/GetStaffInfo/{staffId}");
+
+    }
+
+}

@@ -1,0 +1,25 @@
+﻿@page "/assignrole/create"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@using eHnue.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
+<h3>Tạo phân quyền</h3>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <RoleForm ButtonText="Thêm phân quyền" ass="@reg" OnValidSubmit="@CreateAssignRole" />
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    AssignRole reg = new AssignRole();
+    async Task CreateAssignRole()
+    {
+        var a = await http.PostAsJsonAsync("api/AssignRole", reg);
+        uriHelper.NavigateTo("assignrole");
+    }
+}

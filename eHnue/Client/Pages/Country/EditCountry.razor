@@ -1,0 +1,71 @@
+﻿@page "/editcountry/{Id:int}"
+@using eHnue.Shared
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>Sửa Quốc gia</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="CountryName">Tên Quốc gia</label>
+                        <input form="CountryName" class="form-control" @bind="@country.CountryName" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="CountryCode">Mã Quốc gia</label>
+                        <input form="CountryCode" class="form-control" @bind="@country.CountryCode" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="ISOCode">ISOCode</label>
+                        <input form="ISOCode" class="form-control" @bind="@country.ISOCode" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <input type="button" class="btn btn-primary" @onclick="@Save" value="Save" />
+                        <input type="button" class="btn" @onclick="@Cancel" value="Cancel" />
+                    </div>
+                </div>
+            </div>
+
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; } = 0;
+    CountryView country = new CountryView();
+    protected override async Task OnInitializedAsync()
+    {
+        country = await Http.GetFromJsonAsync<CountryView>("api/Country/" + Id);
+    }
+    protected async Task Save()
+    {
+        var response = await Http.PutAsJsonAsync("api/Country/" + Id, @country);
+        bool personResponse = await response.Content.ReadFromJsonAsync<bool>();
+        if (personResponse)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Updated Successfully!");
+            NavigationManager.NavigateTo("countrylist");
+        }
+    }
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("countrylist");
+    }
+}

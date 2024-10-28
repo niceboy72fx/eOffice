@@ -1,0 +1,114 @@
+﻿@page "/approvelist"
+@inject HttpClient client
+@inject IJSRuntime js
+@using System.Reflection
+@using Newtonsoft.Json
+@using eHnue.Shared.Models
+@using eHnue.Shared
+@using eHnue.Shared.Enum
+@using System.ComponentModel.DataAnnotations
+@inject eHnue.Client.ILocalStorage LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>Phê duyệt đăng ký đi nước ngoài</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            @if (registrations == null)
+            {
+                <text>Không có nhân viên nào thuộc thẩm quyền phê duyệt của bạn</text>
+            }
+            else if (registrations.Length == 0)
+            {
+                <text>Không còn nhân viên nào chưa được duyệt.</text>
+            }
+            else
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Họ và tên</th>
+                            <th>Diễn giải</th>
+                            <th>Nước đăng ký</th>
+                            <th>Mục đích</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Trạng thái</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (Registration_View reg in registrations)
+                        {
+                            <tr>
+                                <td>@reg.Name</td>
+                                <td>@reg.Description</td>
+                                <td>@countries.FirstOrDefault(d => d.Id == reg.ToCountryId)?.CountryName</td>
+                                <td>@purposes.FirstOrDefault(d=> d.Id == reg.PurposeId)?.PurposeName </td>
+                                <td>@reg.FromDate.ToString("dd-MM-yyyy")</td>
+                                <td>@reg.ToDate.ToString("dd-MM-yyyy")</td>
+                                <th>@GetStatusName(reg.Status)</th>
+                                <td>
+                                    <a class="btn btn-success" href="registration/approve/@reg.Id/@reg.StatusAfterApprove">Phê duyệt</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    Registration_View[] registrations { get; set; }
+    CountryView[] countries { get; set; }
+    RegStatus status { get; set; }
+    Purpose[] purposes { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        string stf = await LocalStorage.GetStringAsync("staffId");
+        if (stf != null)
+        {
+            int staffId = Int32.Parse(stf);
+            //var postBody = new { staffId = Int32.Parse(stf) };
+            //ThongTinCanBoAPI response = await client.GetFromJsonAsync<ThongTinCanBoAPI>("api/registration/GetApproveList/" + staffId);
+            HttpResponseMessage postresponse = await client.PostAsJsonAsync("api/registration/PostApproveList", staffId);
+            var jsonString = await postresponse.Content.ReadAsStringAsync();
+            List<Registration_View> obj = JsonConvert.DeserializeObject<List<Registration_View>>(jsonString);
+            if (obj != null)
+            {
+                registrations = obj.ToArray();
+                purposes = await client.GetFromJsonAsync<Purpose[]>("api/Purpose");
+            }
+
+        }
+
+
+        //HttpResponseMessage response = await client.PostAsJsonAsync("api/registration/GetApproveList", @staffId);
+
+        countries = await client.GetFromJsonAsync<CountryView[]>("api/country");
+    }
+    private static string GetStatusName(RegStatus status)
+    {
+        return status.GetType()
+                    .GetMember(status.ToString())
+                    .First()
+                    .GetCustomAttribute<DisplayAttribute>()
+                    .GetName();
+    }
+
+    async Task Delete(int regId)
+    {
+        var reg = registrations.First(x => x.Id == regId);
+        if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {reg.Name}'s ({reg.Id}) Record?"))
+        {
+            await client.DeleteAsync($"api/registration/{regId}");
+            await OnInitializedAsync();
+        }
+    }
+}

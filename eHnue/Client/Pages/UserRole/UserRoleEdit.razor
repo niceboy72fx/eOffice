@@ -1,0 +1,128 @@
+﻿@page "/userrole/edit/{id:int}"
+@inject HttpClient _httpClient
+@inject NavigationManager uriHelper
+@inject NavigationManager NavigationManager
+
+@using eHnue.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized Context="Auth">
+<h3>Create</h3>
+
+<EditForm Model="@item" OnValidSubmit="UpdateUserRole">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label>Đơn vị</label>
+         <InputSelect class="form-control" ValueChanged="@((string value ) => DeptHasChanged(value))" ValueExpression="@(() => item.DeptId)" Value="@item.DeptId">
+            <option value="">---Chọn đơn vị---</option>
+            @foreach (var it in deptList)
+            {
+                @if (it.Id.ToString() == item.DeptId)
+                {
+                    <option value="@it.Id" selected>@it.Name</option>
+                }else {
+                    <option value="@it.Id">@it.Name</option>
+                }
+                
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group">
+        <label>Nhân viên</label>
+        @*<InputSelect class="form-control" @bind-Value="@item.StaffId">*@
+        <InputSelect class="form-control" ValueChanged="@((int value ) => StaffHasChanged(value))" ValueExpression="@(() => item.StaffId)" Value="@item.StaffId">
+            <option value="-1">Tất cả</option>
+            @foreach (var it in userList)
+            {
+                @if (it.Id == item.StaffId){
+                    <option value="@it.Id" selected>@it.Name</option>
+                }else{
+                    <option value="@it.Id">@it.Name</option>
+                }
+                
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group">
+        <label>Tên vai trò</label>
+        <InputSelect class="form-control" @bind-Value="@item.RoleName">
+            <option value="GV" selected>Giáo viên</option>
+            <option value="Admin">Admin</option>
+            <option value="Mod">Mod</option>
+        </InputSelect>
+        @*<InputText id="RoleName" class="form-control" @bind-Value="item.RoleName" />
+        <ValidationMessage For="@(() => item.RoleName)" />*@
+    </div>
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button class="btn btn-light" @onclick="Cancel">Cancel</button>
+    </div>
+</EditForm>
+
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+
+@code {
+    [Parameter] public int id { get; set; }
+    UserRoleView item = new UserRoleView();
+    List<Department> deptList = new List<Department>();
+    List<ThongTinCanBoAPI> userList = new List<ThongTinCanBoAPI>();
+    private string deptID { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        //Lấy các đơn vị
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetDepartment");
+        deptList = await response.Content.ReadFromJsonAsync<List<Department>>();
+        item = await _httpClient.GetFromJsonAsync<UserRoleView>($"api/UserRole/{id}");
+        response = await _httpClient.GetAsync("api/CoreAPI/GetStaff/" + item.DeptId);
+        userList = await response.Content.ReadFromJsonAsync<List<ThongTinCanBoAPI>>();
+    }
+    async Task UpdateUserRole()
+    {
+        var a = await _httpClient.PutAsJsonAsync("api/UserRole", item);
+        uriHelper.NavigateTo("userRoleList");
+    }
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/userRoleList");
+    }
+    private async Task DeptHasChanged(string value)
+    {
+        deptID = value;
+
+        if (value == "")
+        {
+            userList.Clear();
+        }
+        else
+        {
+            await LoadStates(value);
+        }
+    }
+
+    private async Task LoadStates(string khoaId)
+    {
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetStaff/" + khoaId);
+        userList = await response.Content.ReadFromJsonAsync<List<ThongTinCanBoAPI>>();
+    }
+
+    private async Task StaffHasChanged(int value)
+    {
+        int id = value;
+        item.StaffId = id;
+        item.StaffName = userList.Where(m => m.Id == id).FirstOrDefault().Name;
+    }
+}

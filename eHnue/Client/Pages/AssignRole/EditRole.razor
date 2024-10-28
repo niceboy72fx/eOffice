@@ -1,0 +1,31 @@
+﻿@page "/assignrole/edit/{Id:int}"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
+<h3>Sửa</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <RoleForm ButtonText="Update" ass="@ass" OnValidSubmit="@EditAssignRole" />
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public int Id { get; set; }
+    AssignRole ass = new AssignRole();
+    protected async override Task OnParametersSetAsync()
+    {
+        ass = await http.GetFromJsonAsync<AssignRole>($"api/assignrole/{Id}");
+    }
+    async Task EditAssignRole()
+    {
+        var a = await http.PutAsJsonAsync("api/assignrole", ass);
+        //await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+        uriHelper.NavigateTo("assignrole");
+    }
+}

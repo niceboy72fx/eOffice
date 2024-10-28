@@ -1,0 +1,101 @@
+﻿@page "/countrylist"
+@using eHnue.Shared
+@inject HttpClient _httpClient
+@using Microsoft.AspNetCore.Components.Authorization
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <div class="row">
+                <div class="col-md-6">
+                    <a href='/addcountry' class="btn btn-primary" role="button">
+                        <i class="fas fa-user-plus"></i>
+                        Thêm Quốc gia
+                    </a>
+                </div>
+                <div class="input-group col">
+                    <input type="text" class="form-control" placeholder="Search country by name"
+                           @bind="SearchString" @bind:event="oninput" @onkeyup="FilterCountry" />
+                    @if (SearchString.Length > 0)
+                    {
+                        <div class="input-group-append">
+                            <button class="btn btn-danger" @onclick="ResetSearch">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div>
+                @if (countryList == null)
+                {
+                    <p><em>Loading...</em></p>
+                }
+                else
+                {
+                    <table class="table table-striped align-middle table-bordered">
+                        <thead class="table-success">
+
+                            <tr>
+                                <th width="5" scope="col" align="center">ID</th>
+                                <th width="40%" scope="col" align="center">Tên nước</th>
+                                <th width="10%" scope="col" align="center"> Mã nước</th>
+                                <th width="15%" scope="col" align="center">ISOCode</th>
+                                <th width="20%" scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in countryList)
+                            {
+                                <tr>
+                                    <td>@p.Id</td>
+                                    <td>@p.CountryName</td>
+                                    <td>@p.CountryCode</td>
+                                    <td>@p.ISOCode</td>
+
+                                    <td>
+                                        <a href='/editcountry/@p.Id' class="btn btn-outline-dark" role="button">Edit</a>
+                                        <a href='/deletecountry/@p.Id' class="btn btn-outline-danger" role="button">Delete</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    protected string SearchString { get; set; } = string.Empty;
+    protected List<CountryView> countryList = new List<CountryView>();
+    protected List<CountryView> searchCountryData = new();
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _httpClient.GetAsync("api/country");
+        response.EnsureSuccessStatusCode();
+        countryList = await response.Content.ReadFromJsonAsync<List<CountryView>>();
+        searchCountryData = countryList;
+    }
+
+    protected void FilterCountry()
+    {
+        if (!string.IsNullOrEmpty(SearchString))
+        {
+            countryList = searchCountryData
+                .Where(x => x.CountryName.IndexOf(SearchString, StringComparison.OrdinalIgnoreCase) != -1)
+                .ToList();
+        }
+        else
+        {
+            countryList = searchCountryData;
+        }
+    }
+    public void ResetSearch()
+    {
+        SearchString = string.Empty;
+        countryList = searchCountryData;
+    }
+}

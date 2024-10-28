@@ -1,0 +1,31 @@
+﻿@page "/registration/edit/{Id:int}"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
+<h3>Sửa</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <RegistrationForm ButtonText="Update" reg="reg" OnValidSubmit="@EditReg" />
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public int Id { get; set; }
+    Registration reg = new Registration();
+    protected async override Task OnParametersSetAsync()
+    {
+        reg = await http.GetFromJsonAsync<Registration>($"api/registration/{Id}");
+    }
+    async Task EditReg()
+    {
+        var a = await http.PutAsJsonAsync("api/registration", reg);
+        //await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+        uriHelper.NavigateTo("registration");
+    }
+}

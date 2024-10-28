@@ -1,0 +1,202 @@
+﻿@page "/register"
+@using Newtonsoft.Json
+@using System.Text
+@using System.Net.Http.Headers
+@using System.Net.Mime
+@using eHnue.Shared
+@inject HttpClient _httpClient
+@using System.Threading.Tasks
+@using Microsoft.Extensions.Logging
+@using eHnue.Shared.Models
+@using eHnue.Shared.Enum
+@inject eHnue.Client.ILocalStorage LocalStorage
+@inject ILogger<OutboundRegister> Logger
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+<div class="card m-3">
+    @if (isRegistrationSuccess)
+    {
+        <div role="alert">Hoàn thành đăng ký, email sẽ được gửi về cho bạn</div>
+    }
+
+    <div class="col-md-7 col-lg-8">
+        <h4 class="mb-3">Đăng ký đi nước ngoài</h4>
+        <hr class="my-4">
+        <EditForm Model="@newRegistration" OnValidSubmit="@RegisterValidation">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-3">
+                <div class="col-sm-6">
+                    <label>Họ và đệm</label>
+                    <InputText id="Name" class="form-control" placeholder="Họ và đệm"
+                               @bind-Value="newRegistration.Name" />
+                    <ValidationMessage For="@(() => newRegistration.Name)" />
+                </div>
+                <div class="col-md-3">
+                    <label>Đối tượng</label>
+                    <InputSelect class="form-control" @bind-Value="@newRegistration.StaffType">
+                        @foreach (var stafftype in Enum.GetNames(typeof(StaffType)))
+                        {
+                            <option value="@stafftype">@stafftype</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-sm-3">
+                    <label>Số điện thoại</label>
+                    <InputText id="MobiPhone" class="form-control"
+                               @bind-Value="newRegistration.MobiPhone" />
+                    <ValidationMessage For="@(() => newRegistration.MobiPhone)" />
+                </div>
+
+                <div class="col-sm-3">
+                    <label>ĐT ở nước ngoài</label>
+                    <InputText id="OutboundPhone" class="form-control"
+                               @bind-Value="newRegistration.OutboundPhone" />
+                    <ValidationMessage For="@(() => newRegistration.OutboundPhone)" />
+                </div>
+                <div class="col-sm-6">
+                    <label>Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="you@hnue.edu.vn">
+                    <div class="invalid-feedback">
+                        Địa chỉ email không hợp lệ.
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <label>Đăng ký đi từ ngày</label>
+                    <InputDate id="fromDate" class="form-control" @bind-Value="newRegistration.FromDate" ParsingErrorMessage="Ngày không hợp lệ" />
+                    <ValidationMessage For="@(() => newRegistration.FromDate)" />
+                </div>
+
+                <div class="col-sm-6">
+                    <label>Đến ngày</label>
+                    <InputDate id="fromDate" class="form-control" @bind-Value="newRegistration.ToDate" ParsingErrorMessage="Ngày không hợp lệ" />
+                    <ValidationMessage For="@(() => newRegistration.ToDate)" />
+                </div>
+                <div class="col-md-6">
+                    <label for="purpose" class="form-label">Mục đích đi nước ngoài</label>
+                    <select class="form-select" id="purpose" required>
+                        @foreach (var purpose in purposeList)
+                        {
+                            <option value="@purpose.Id">@purpose.PurposeName</option>
+                        }
+                    </select>
+                    <div class="invalid-feedback">
+                        Chọn đúng mục đích.
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="country" class="form-label">Nước</label>
+                    <select class="form-select" id="country" required>
+                        @foreach (var country in countryList)
+                        {
+                            <option value="@country.Id">@country.CountryName</option>
+                        }
+                    </select>
+                    <div class="invalid-feedback">
+                        Chọn đúng nước cần đi.
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label>Nội dung đi nước ngoài</label>
+                    <InputTextArea id="Descritption" class="form-control" placeholder="Tóm tắt nội dung đi nước ngoài"
+                                   @bind-Value="newRegistration.Description" />
+                    <ValidationMessage For="@(() => newRegistration.Description)" />
+                </div>
+@*                <InputFile OnChange="OnInputFileChange" multiple />
+                <br /><br />
+                <button type="submit">Upload Selected File(s)</button>*@
+                <div class="form-check">
+                    <InputCheckbox @bind-Value="newRegistration.IsPartyMember" />
+                    <label>Tôi là Đảng viên và đã thực hiện báo cáo việc đi nước ngoài với Chi bộ/Đảng bộ trực thuộc</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="Confirm" name="Confirm" value="add" />
+                    <label for="Confirm">Tôi cam kết trong thời gian đi nước ngoài sẽ tuân thủ pháp luật của Nhà nước, 
+                        quy định của Nhà trường và về nước đúng thời hạn</label>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <button class="btn btn-primary btn-lg" type="submit" @onclick="@Save">Đăng ký</button>
+            <button class="btn btn-secondary btn-lg" type="reset">Hủy đăng ký</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    protected bool isRegistrationSuccess = false;
+    private Registration newRegistration = new();
+    private int staffId = 0;
+    private string ErrorMsg;
+    List<CountryView> countryList = new List<CountryView>();
+    List<Purpose> purposeList = new List<Purpose>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _httpClient.GetAsync("api/country");
+        response.EnsureSuccessStatusCode();
+        countryList = await response.Content.ReadFromJsonAsync<List<CountryView>>();
+
+        //Lấy mục đích đi công tác
+        response = await _httpClient.GetAsync("api/purpose");
+        response.EnsureSuccessStatusCode();
+        purposeList = await response.Content.ReadFromJsonAsync<List<Purpose>>();
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp!=null){
+            staffId = Int32.Parse(tmp);
+        }
+
+
+        var staff_api_rs = await _httpClient.GetAsync("api/StaffAPI/"+@staffId);
+        var staff_api_obj = staff_api_rs.Content.ReadAsStringAsync().Result;
+        var result = JsonConvert.DeserializeObject<StaffAPI_View>(staff_api_obj);
+        if (!result.success)
+        {
+            ErrorMsg = result.message;
+        }else{
+            newRegistration.Name = result.data.Name;
+        }
+        
+    }
+
+    protected void RegisterValidation()
+
+    {
+        isRegistrationSuccess = false;
+        try
+        {
+            Logger.LogInformation("RegisterValidation called");
+            Console.WriteLine(newRegistration.Id.ToString());
+            Console.WriteLine(newRegistration.Description);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex.Message);
+        }
+    }
+    protected async Task Save()
+    {
+        
+        //var content = new StringContent(@newRegistration, Encoding.UTF8, "application/json");
+        var content = new StringContent(JsonConvert.SerializeObject(@newRegistration), Encoding.UTF8, MediaTypeNames.Application.Json);
+        var response = await _httpClient.PostAsync("api/Registration", content);
+        //_httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
+        //_httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        //var response = await _httpClient.PostAsJsonAsync("api/Registration", @newRegistration);
+        //int regId = await response.Content.ReadFromJsonAsync<int>();
+        //if (regId > 0)
+        //{
+        //    await JsRuntime.InvokeVoidAsync("alert", "Saved Successfully!");
+        //    NavigationManager.NavigateTo("countrylist");
+        //}
+    }
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("countrylist");
+    }
+}

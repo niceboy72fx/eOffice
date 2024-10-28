@@ -1,0 +1,72 @@
+﻿@page "/purpose/add"
+@page "/purpose/edit/{Id:int}"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h2>@Title Mục đích</h2>
+<hr />
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized Context = "Auth">
+            <EditForm Model="@purpose" OnValidSubmit="SavePurpose">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="Name" class="form-label">Tên mục đích</label>
+                    <div class="col-md-4">
+                        <InputText class="form-control" @bind-Value="purpose.PurposeName" />
+                    </div>
+                    <ValidationMessage For="@(() => purpose.PurposeName)" />
+                </div>
+                <div class="mb-3">
+                    
+                    <div class="form-check">
+                        <InputCheckbox @bind-Value="purpose.IsPrivate" />
+                        <label for="IsPrivate" class="form-label">Là mục đích cá nhân</label>
+                    </div>
+                    <ValidationMessage For="@(() => purpose.IsPrivate)" />
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button class="btn btn-light" @onclick="Cancel">Cancel</button>
+                </div>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    protected string Title = "Thêm";
+    protected Purpose purpose = new();
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != 0)
+        {
+            Title = "Sửa";
+            purpose = await Http.GetFromJsonAsync<Purpose>("api/Purpose/" + Id);
+        }
+    }
+    protected async Task SavePurpose()
+    {
+        if (purpose.Id != 0)
+        {
+            await Http.PutAsJsonAsync("api/Purpose", purpose);
+        }
+        else
+        {
+            await Http.PostAsJsonAsync("api/Purpose", purpose);
+        }
+        Cancel();
+    }
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/PurposeDetails");
+    }
+}

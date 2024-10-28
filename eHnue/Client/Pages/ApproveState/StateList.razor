@@ -1,0 +1,80 @@
+﻿@page "/approvestate"
+@inject HttpClient client
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using eHnue.Shared
+@inject HttpClient _httpClient
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>Danh sách các mức phê duyệt</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+<div class="form-group">
+    <a class="btn btn-success" href="approvestate/add"><i class="oi oi-plus"></i> Tạo mới</a>
+</div>
+<br>
+            @if (appStates == null)
+            {
+                <text>Loading...</text>
+            }
+            else if (appStates.Length == 0)
+            {
+                <text>Không có bản ghi nào.</text>
+            }
+            else
+            {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Mức duyệt</th>
+                    <th>Tên mức duyệt</th>
+                    <th>Chức vụ tương ứng</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                        @foreach (ApproveState sta in appStates)
+                        {
+                        <tr>
+                            <td>@sta.Id</td>
+                            <td>@sta.State</td>
+                            <td>@sta.Name</td>
+                            <td>@posList.FirstOrDefault(d => d.id == sta.PositionId)?.Name</td>
+                            <td>
+                                <a class="btn btn-success" href="approvestate/edit/@sta.Id">Edit</a>
+                                <button class="btn btn-danger" @onclick="@(() => Delete(sta.Id))">Delete</button>
+                            </td>
+                        </tr>
+                        }
+            </tbody>
+        </table>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    ApproveState[] appStates { get; set; }
+    List<Position> posList = new List<Position>();
+    protected override async Task OnInitializedAsync()
+    {
+        appStates = await client.GetFromJsonAsync<ApproveState[]>("api/approvestate");
+        //Lấy vị trí
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetPosition");
+        response.EnsureSuccessStatusCode();
+        posList = await response.Content.ReadFromJsonAsync<List<Position>>();
+    }
+    async Task Delete(int staId)
+    {
+        var sta = appStates.First(x => x.Id == staId);
+        if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {sta.Id}'s ({sta.Id}) Record?"))
+        {
+            await client.DeleteAsync($"api/approvestate/{staId}");
+            await OnInitializedAsync();
+        }
+    }
+}

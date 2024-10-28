@@ -1,0 +1,64 @@
+﻿@page "/expense/add"
+@page "/expense/edit/{Id:int}"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h2>@Title Hình thức chi trả</h2>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized Context = "Auth">
+            <EditForm Model="@expense" OnValidSubmit="SaveExpense">
+                <DataAnnotationsValidator />
+    
+                <div class="mb-3">
+                    <label for="Address" class="form-label">Tên hình thức chi trả</label>
+                    <div class="col-md-4">
+                        <InputText class="form-control" @bind-Value="expense.ExpenseName" />
+                    </div>
+                    <ValidationMessage For="@(() => expense.ExpenseName)" />
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button class="btn btn-light" @onclick="Cancel">Cancel</button>
+                </div>
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    protected string Title = "Thêm mới";
+    protected Expense expense = new();
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != 0)
+        {
+            Title = "Sửa";
+            expense = await Http.GetFromJsonAsync<Expense>("api/Expense/" + Id);
+        }
+    }
+    protected async Task SaveExpense()
+    {
+        if (expense.Id != 0)
+        {
+            await Http.PutAsJsonAsync("api/Expense", expense);
+        }
+        else
+        {
+            await Http.PostAsJsonAsync("api/Expense", expense);
+        }
+        Cancel();
+    }
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/ExpenseDetails");
+    }
+}

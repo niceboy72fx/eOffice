@@ -1,0 +1,137 @@
+﻿@page "/ApproveLogList"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@inject eHnue.Client.ILocalStorage LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+
+
+<h2>Tra cứu nhật ký duyệt</h2>
+<CascadingAuthenticationState>
+<AuthorizeView> 
+<Authorized>   
+<div class="row">
+    <div class="input-group col">
+        <input id="Search" type="text" class="form-control" placeholder="Tìm kiếm theo ngày tháng"
+               @bind="SearchString" @bind:event="oninput" @onkeyup="FilterApproveLog" />
+        @if (SearchString.Length > 0)
+        {
+            <div class="input-group-append">
+                <button class="btn btn-danger" @onclick="ResetSearch">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+<br />
+@if (approvelogList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (approvelogList.Count == 0)
+{
+    <text>Chưa có hồ sơ nào được duyệt.</text>
+}
+else
+{
+    <table class="table table-striped align-middle table-bordered">
+        <thead class="table-success">
+            <tr>
+                <th align="center">ID</th>
+                <th align="center">Họ và tên </th>
+                <th align="center">Ngày duyệt</th>
+                <th align="center">Mức duyệt trước</th>
+                <th align="center">Mức duyệt sau</th>
+                <th align="center">Ghi chú</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var approvelog in approvelogList)
+            {
+                <tr>
+                    <td>@approvelog.RegistrationID</td>
+                    <td>@reg.FirstOrDefault(m => m.Id == approvelog.RegistrationID)?.Name</td>
+                    <td>@approvelog.ApproveDate</td>
+                    <td>@approvelog.FromStatus</td>
+                    <td>@approvelog.ToStatus</td>
+                    <td>@approvelog.Note</td>
+
+                    <td>
+                        <button class="btn btn-danger" @onclick="@(() => Delete(approvelog.Id, approvelog.FromStatus, approvelog.RegistrationID))">Khôi phục</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+}
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    protected List<ApproveLog> approvelogList = new();
+    protected List<ApproveLog> searchApproveLogData = new();
+    protected List<Registration> reg = new();
+    protected ApproveLog approvelog = new();
+    protected string SearchString { get; set; } = string.Empty;
+
+    private int staffId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string tmp = await LocalStorage.GetStringAsync("staffId");
+        if (tmp != null)
+        {
+            staffId = Int32.Parse(tmp);
+        }
+        //approvelogList = await Http.GetFromJsonAsync<List<ApproveLog>>($"api/ApproveLog/GetLogByStaffID/{staffId}");
+        approvelogList = await Http.GetFromJsonAsync<List<ApproveLog>>("api/ApproveLog/GetLogByStaffId/" + staffId);
+        int[] listofID= approvelogList.Select(m => m.RegistrationID).ToArray();
+        string strID = string.Join(",", listofID.ToArray());
+        if (strID.Length !=0)
+        {
+            reg = await Http.GetFromJsonAsync<List<Registration>>("api/Registration/GetByIds/" + strID);
+        }
+        
+        searchApproveLogData = approvelogList;
+    }
+
+
+    protected void FilterApproveLog()
+    {
+        if (!string.IsNullOrEmpty(SearchString))
+        {
+            approvelogList = searchApproveLogData
+                .Where(x => x.ApproveDate.IndexOf(SearchString, StringComparison.OrdinalIgnoreCase) != -1)
+                .ToList();
+        }
+        else
+        {
+            approvelogList = searchApproveLogData;
+        }
+    }
+    protected void DeleteConfirm(int approvelogID)
+    {
+        approvelog = approvelogList.FirstOrDefault(x => x.Id == approvelogID);
+    }
+    public void ResetSearch()
+    {
+        SearchString = string.Empty;
+        approvelogList = searchApproveLogData;
+    }
+
+    async Task Delete(int logId, int fromStatus, int regId)
+    {
+        Registration newreg = new Registration();
+        newreg = reg.FirstOrDefault(m => m.Id == regId);
+        newreg.ApprovedStatus = fromStatus;
+        await Http.PutAsJsonAsync("api/registration/", @newreg);
+        await Http.DeleteAsync($"api/ApproveLog/{logId}");
+        
+        await OnInitializedAsync();
+    }
+}

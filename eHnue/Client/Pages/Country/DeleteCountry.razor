@@ -1,0 +1,54 @@
+﻿@page "/deletecountry/{Id:int}"
+@using eHnue.Shared
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@using Microsoft.AspNetCore.Components.Authorization
+
+
+<h3>Xóa Quốc gia</h3>
+<CascadingAuthenticationState>
+<AuthorizeView Roles="Admin, Mod"> 
+<Authorized>
+@if (country != null)
+{
+    <p>Bạn có muốn xóa quốc gia này: <b>@country.CountryName</b></p>    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <input type="button" class="btn btn-primary" @onclick="@Delete" value="Delete" />
+                <input type="button" class="btn btn-secondary" @onclick="@Cancel" value="Cancel" />
+            </div>
+        </div>
+    </div>
+}
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    CountryView country = new CountryView();
+    protected override async Task OnInitializedAsync()
+    {
+        country = await Http.GetFromJsonAsync<CountryView>("api/country/" + Id);
+    }
+    protected async Task Delete()
+    {
+        var response = await Http.DeleteAsync("api/Country/" + Id);
+        bool deleteResponse = await response.Content.ReadFromJsonAsync<bool>();
+            if (deleteResponse)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Deleted Successfully!");
+                NavigationManager.NavigateTo("countrylist");
+            }
+        }
+        void Cancel()
+        {
+            NavigationManager.NavigateTo("countrylist");
+        }
+    }
+}

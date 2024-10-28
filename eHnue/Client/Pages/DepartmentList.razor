@@ -1,0 +1,61 @@
+﻿@page "/DepartmentList"
+@using eHnue.Shared
+@using Newtonsoft.Json
+
+@inject HttpClient _httpClient
+
+<h3>Danh sách phòng ban</h3>
+@if (departList == null)
+{
+    <text>Loading...</text>
+}
+else if (departList.Count == 0)
+{
+    <text>Không tìm thấy bản ghi nào.</text>
+}
+else
+{
+        <table class="table table-striped align-middle table-bordered">
+            <thead align="center" class="table-success">
+                <tr>
+                    <th>Mã Đơn vị</th>
+                    <th>Tên đơn vị</th>
+                    <th>Địa chỉ</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            @foreach (var item in departList)
+            {
+                            <tr>
+                                <th>@item.Id</th>
+                                <th>@item.Name</th>
+                                <th>@item.Address</th>
+                                <th>@item.Email</th>
+                                <th>@item.Tel</th>
+                            </tr>
+            }
+
+            </tbody>
+        </table>
+}
+@code {
+    //"Id": 26,
+    //    "Name": "Trung tâm Công nghệ Thông tin",
+    //    "Address": "Tầng 5, nhà Hiệu Bộ, Trường ĐHSP Hà Nội",
+    //    "Tel": "04 37547238 503",
+    //    "Email": "tt.cntt@hnue.edu.vn",
+    //    "Code": "D2290320",
+    //    "SyncCode": null
+    List<Department> departList = new List<Department>();
+    protected override async Task OnInitializedAsync()
+    {
+        //Lấy vị trí
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetDepartment");
+        response.EnsureSuccessStatusCode();
+        departList = await response.Content.ReadFromJsonAsync<List<Department>>();
+
+    }
+}

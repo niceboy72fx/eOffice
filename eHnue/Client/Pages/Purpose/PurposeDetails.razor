@@ -1,0 +1,125 @@
+﻿@page "/PurposeDetails"
+@using eHnue.Shared.Models
+@inject HttpClient Http
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized>
+            <h3>Mục đích công tác</h3>
+
+
+            @if (purposeList == null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                <div class="row">
+                    <div class="col-md-6">
+                        <a href='/purpose/add' class="btn btn-primary" role="button">
+                            <i class="fas fa-user-plus"></i>
+                            Thêm mục đích
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row-cols-md-4">
+                            <input type="text" class="form-control" placeholder="Tìm kiếm theo mục đích"
+                               @bind="SearchString" @bind:event="oninput" @onkeyup="FilterPurpose" />
+                            @if (SearchString.Length > 0)
+                            {
+                                <div class="row-cols-md-2">
+                                    <button class="btn btn-danger" @onclick="ResetSearch">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <table class="table table-striped align-middle table-bordered">
+                    <thead align="center" class="table-success">
+                        <tr>
+                            <th>ID</th>
+                            <th>Mục đích</th>
+                            <th>Là mục đích cá nhân</th>
+                            <td></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var purpose in purposeList)
+                        {
+                            <tr>
+                                <td align="center">@purpose.Id</td>
+                                <td>@purpose.PurposeName</td>
+                                @if (@purpose.IsPrivate)
+                                {
+                                    <td align="center">Cá nhân</td>
+                                }
+                                else{
+                                    <td align="center">Công việc</td>
+                                }
+                                <td>
+                                    <a href='/purpose/edit/@purpose.Id' class="btn btn-outline-dark" role="button">
+                                        Edit
+                                    </a>
+                                    <a href='/purpose/delete/@purpose.Id' class="btn btn-outline-danger" role="button">
+                                        Delete
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    protected List<Purpose>? purposeList = new();
+    protected List<Purpose> searchPurposeData = new();
+    protected Purpose purpose = new();
+    protected string SearchString { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetPurpose();
+    }
+    protected async Task GetPurpose()
+    {
+        purposeList = await Http.GetFromJsonAsync<List<Purpose>>("api/Purpose");
+        if (purposeList != null)
+        {
+            searchPurposeData = purposeList;
+        }
+
+    }
+    protected void FilterPurpose()
+    {
+        if (!string.IsNullOrEmpty(SearchString))
+        {
+            purposeList = searchPurposeData
+                .Where(x => x.PurposeName.IndexOf(SearchString, StringComparison.OrdinalIgnoreCase) != -1)
+                .ToList();
+        }
+        else
+        {
+            purposeList = searchPurposeData;
+        }
+    }
+    protected void DeleteConfirm(int purposeID)
+    {
+        purpose = purposeList.FirstOrDefault(x => x.Id == purposeID);
+    }
+
+    public void ResetSearch()
+    {
+        SearchString = string.Empty;
+        purposeList = searchPurposeData;
+    }
+}

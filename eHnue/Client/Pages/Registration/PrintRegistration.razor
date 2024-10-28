@@ -1,0 +1,46 @@
+﻿@page "/registration/print/{Id:int}"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+@using eHnue.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
+<h3>Sửa</h3>
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <a href="@fileUrl">Download</a>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public int Id { get; set; }
+    string reg;
+    string fileUrl { get; set; }
+    protected async override Task OnParametersSetAsync()
+    {        
+        //var postResult = await http.PostAsync("api/registration/PostPrint", Id);
+        //var postContent = await postResult.Content.ReadAsStringAsync();
+
+        var postResult = await http.GetAsync($"api/registration/print/{Id}");
+        var postContent = await postResult.Content.ReadAsStringAsync();
+        if (!postResult.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(postContent);
+        }
+        else
+        {
+            fileUrl = Path.Combine(uriHelper.BaseUri, postContent);
+            
+        }
+
+    }
+    async Task EditReg()
+    {
+        var a = await http.PutAsJsonAsync("api/registration", reg);
+        //await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+        uriHelper.NavigateTo("registration");
+    }
+}

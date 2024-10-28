@@ -1,0 +1,80 @@
+﻿@using System.Net.Http.Headers
+@inherits LayoutComponentBase
+@inject HttpClient _httpClient
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using System.Text
+@using Microsoft.AspNetCore.Components.Authorization
+@using Newtonsoft.Json
+@using RestSharp;
+@using eHnue.Shared
+@* NOTE: BEGIN NEW CODE *@
+@inject eHnue.Client.ILocalStorage LocalStorage
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+
+@*<CascadingValue Value="this">*@
+@* NOTE: END NEW CODE *@
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-lg-2">
+            @*<a href="hnue.edu.vn" target="_blank">Về trang chủ</a>*@
+            @* NOTE: BEGIN NEW CODE (REPLACED THE "About" LINK) *@
+            <div style="width:200px;text-align:right;">
+                   @* <LoginDisplay />*@
+                    <CascadingAuthenticationState>
+                        <AuthorizeView Roles="GV">
+                           @* <p>You can only see this if you're in the User role.</p>*@
+                        </AuthorizeView>
+                        <AuthorizeView>
+                            <Authorized>
+                            <span>@context.User.Identity.Name</span>
+                                <a href="/logout" class="btn btn-success">Log out</a>
+                                
+                            </Authorized>
+                            <NotAuthorized>
+                                <a href="/login" class="btn btn-success">Log in</a>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </CascadingAuthenticationState>
+               
+            </div>
+            @* NOTE: END NEW CODE *@
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+    @* NOTE: BEGIN NEW CODE *@
+@*</CascadingValue>*@
+@* NOTE: END NEW CODE *@
+
+
+@code {
+
+    private bool show, display, loggedIn;
+    private string? user;
+    private string? pass;
+    private string? ErrorMsg;
+    
+    string userName { get; set; }
+    
+    
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();        
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();        
+        userName = authState.User.Identity.Name;
+
+    }
+}
+
+@* NOTE: END NEW CODE *@

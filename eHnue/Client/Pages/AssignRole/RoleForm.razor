@@ -1,0 +1,139 @@
+﻿@using Newtonsoft.Json
+@using eHnue.Shared
+@using eHnue.Shared.Enum
+@using eHnue.Shared.Models
+@inject NavigationManager NavigationManager
+@inject HttpClient _httpClient
+@using Microsoft.AspNetCore.Components.Authorization
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Mod, Admin">
+        <Authorized Context="Auth">
+
+            <div class="col-md-7 col-lg-8">
+                <h4 class="mb-3">Phân quyền phê duyệt</h4>
+                <hr class="my-4">
+                <EditForm Model="@ass" OnValidSubmit="@OnValidSubmit">
+                    <DataAnnotationsValidator />
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <label>Đơn vị</label>
+                            <InputSelect class="form-control" @bind-Value="@ass.AssigneeDeptId">
+                                <option value="-1">Tất cả</option>
+                                @foreach (var item in deptList)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label>Chức vụ</label>
+                            <InputSelect class="form-control" @bind-Value="@ass.AssigneePosId">
+                                <option value="-1">Tất cả</option>
+                                @foreach (var item in positionList)
+                                {
+                                    <option value="@item.id">@item.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Phê duyệt cho đơn vị</label>
+                            <InputSelect class="form-control" @bind-Value="@ass.AssignForDepartId">
+                                <option value="-1">Tất cả</option>
+                                @foreach (var item in deptList)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-sm-3">
+                            <label>Trạng thái được phê duyệt</label>
+                            @*<InputNumber id="StatusBeforeAssign" class="form-control" @bind-Value="ass.StatusBeforeAssign" />*@
+                            <InputSelect class="form-control" @bind-Value="@ass.StatusBeforeAssign">
+                                @foreach (var item in stateList)
+                                {
+                                    <option value="@item.State">@item.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => ass.StatusBeforeAssign)" />
+                        </div>
+                        <div class="col-sm-3">
+                            <label>Trạng thái sau phê duyệt</label>
+                            @*<InputNumber id="StatusAfterAssign" class="form-control" @bind-Value="ass.StatusAfterAssign" />*@
+                            <InputSelect class="form-control" @bind-Value="@ass.StatusAfterAssign">
+                                @foreach (var item in stateList)
+                                {
+                                    <option value="@item.State">@item.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => ass.StatusAfterAssign)" />
+                        </div>
+                        <div class="col-sm-3">
+                            <label>Số ngày tối thiểu</label>
+                            <InputNumber id="MinDays" class="form-control" @bind-Value="ass.MinDays" />
+                            <ValidationMessage For="@(() => ass.MinDays)" />
+                        </div>
+                        <div class="col-sm-3">
+                            <label>Số ngày tối đa</label>
+                            <InputNumber id="MaxDays" class="form-control" @bind-Value="ass.MaxDays" />
+                            <ValidationMessage For="@(() => ass.MaxDays)" />
+                        </div>
+                        <div class="form-check">
+                            <InputCheckbox @bind-Value="ass.IsPrivated" />
+                            <label>Nghỉ phép</label>
+                        </div>
+
+                    </div>
+
+                    <hr class="my-4">
+
+                    <button type="submit" class="btn btn-primary">
+                        @ButtonText
+                    </button>
+                    <input type="submit" value="Cancel" @onclick="(() => Cancel())" class="btn btn-warning" />
+                </EditForm>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <p>Please sign in.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public AssignRole ass { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Lưu";
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    private int staffId = 0;
+    private string ErrorMsg;
+
+    List<Purpose> purposeList = new List<Purpose>();
+    List<Position> positionList = new List<Position>();
+    List<Department> deptList = new List<Department>();
+    List<ApproveState> stateList = new List<ApproveState>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Lấy vị trí
+        var response = await _httpClient.GetAsync("api/CoreAPI/GetPosition");
+        response.EnsureSuccessStatusCode();
+        positionList = await response.Content.ReadFromJsonAsync<List<Position>>();
+
+        //Lấy các đơn vị
+        response = await _httpClient.GetAsync("api/CoreAPI/GetDepartment");
+        response.EnsureSuccessStatusCode();
+
+        deptList = await response.Content.ReadFromJsonAsync<List<Department>>();
+
+        response = await _httpClient.GetAsync("api/approvestate");
+        stateList = await response.Content.ReadFromJsonAsync<List<ApproveState>>();
+
+    }
+
+    public void Cancel()
+    {
+        NavigationManager.NavigateTo("/assignrole");
+    }
+
+}
